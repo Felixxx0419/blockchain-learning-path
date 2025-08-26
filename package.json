@@ -1,0 +1,26 @@
+{
+  "name": "my-first-blockchain-test",
+  "version": "1.0.0",
+  "description": "Blcokchain testing project",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle test"
+
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "truffle",
+    "solidity"
+  ],
+  "author": "web3dev",
+  "license": "MIT",
+  "devDependencies": {
+    "truffle": "^5.11.5",
+    "chai": "^4.3.10",
+    "ethers": "^5.7.2"
+  }
+}
