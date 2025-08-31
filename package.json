@@ -1,6 +1,11 @@
 {
   "name": "my-first-blockchain-test",
   "version": "1.0.0",
+  "private": true, 
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Felixxx0419/blockchain-learning-path.git" 
+  },
   "description": "Blcokchain testing project",
   "main": "truffle-config.js",
   "directories": {
