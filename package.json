@@ -1,31 +1,49 @@
 {
   "name": "my-first-blockchain-test",
   "version": "1.0.0",
-  "private": true, 
+  "type": "commonjs",
+  "overrides": {
+    "scripts": {
+      "type": "commonjs"
+    }
+  },
+  "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Felixxx0419/blockchain-learning-path.git" 
+    "url": "https://github.com/Felixxx0419/blockchain-learning-path.git"
   },
   "description": "Blcokchain testing project",
-  "main": "truffle-config.js",
+  "main": "hardhat.config.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "truffle test"
-
+    "test": "hardhat test",
+    "test:security": "hardhat test test/SecurityTest.test.js",
+    "test:load": "node scripts/loadtest.js",
+    "test:coverage": "hardhat coverage",
+    "test:slither": "slither . --exclude-dependencies --checklist --json reports/slither-report.json",
+    "test:all": "node scripts/run-all-tests.js",
+    "compile": "hardhat compile",
+    "node": "hardhat node"
   },
   "keywords": [
     "blockchain",
     "ethereum",
-    "truffle",
-    "solidity"
+    "hardhat",
+    "solidity",
+    "testing"
   ],
   "author": "web3dev",
   "license": "MIT",
   "devDependencies": {
-    "truffle": "^5.11.5",
+    "@nomiclabs/hardhat-ethers": "2.2.3",
+    "@nomiclabs/hardhat-waffle": "2.0.6",
     "chai": "^4.3.10",
-    "ethers": "^5.7.2"
+    "ethereum-waffle": "3.4.4",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.19.0",
+    "solidity-coverage": "0.8.16",
+    "truffle": "^5.11.5"
   }
 }

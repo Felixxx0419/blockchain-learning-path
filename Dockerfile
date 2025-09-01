@@ -10,11 +10,17 @@ WORKDIR /app
 # 复制package文件（利用Docker缓存层）
 COPY package*.json ./
 
-# 安装全局工具 - 使用ganache（新）而不是ganache-cli（旧）
+# 安装全局工具
 RUN npm install -g truffle ganache
 
-# 安装项目依赖
-RUN npm install
+# 安装项目依赖（使用经过验证的稳定版本）
+RUN npm install --save-dev \
+    hardhat@2.19.0 \
+    ethers@5.8.0 \
+    @nomiclabs/hardhat-waffle@2.0.6 \
+    @nomiclabs/hardhat-ethers@2.2.3 \
+    ethereum-waffle@3.4.4 \
+    chai@4.3.10
 
 # 创建Python虚拟环境并安装Slither
 RUN python3 -m venv /opt/venv
@@ -26,10 +32,6 @@ COPY . .
 
 # 暴露Ganache端口
 EXPOSE 8545
-
-# 启动命令：启动Ganache并运行测试
-# CMD ["sh", "-c", "echo '启动Ganache测试网络' && ganache --deterministic --host 0.0.0.0 & sleep 3 && echo '运行Truffle测试..' && truffle test "]
-
 
 # 设置默认启动命令为bash shell
 CMD ["/bin/bash"]
