@@ -22,6 +22,11 @@ RUN npm install --save-dev \
     ethereum-waffle@3.4.4 \
     chai@4.3.10
 
+
+# 安装OpenZeppelin合约（关键修复）
+RUN npm install @openzeppelin/contracts
+
+
 # 创建Python虚拟环境并安装Slither
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"

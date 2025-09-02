@@ -1,4 +1,6 @@
+//require("@nomicfoundation/hardhat-toolbox"); // 替换原来的 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-ethers");
 require("solidity-coverage");
 
 /** @type import('hardhat/config').HardhatUserConfig */
