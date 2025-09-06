@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { loadFixture, time } = require("@nomicfoundation/hardhat-network-helpers");
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("DeFiLending Protocol - 完整测试套件", function () {
   // 我们将使用 loadFixture 来复用部署环境，使测试更高效
@@ -171,66 +171,90 @@ describe("DeFiLending Protocol - 完整测试套件", function () {
   });
 
   describe("5. 利息计算测试", function () {
-    xit("5.1 应正确计算存款利息", async function () {
+    it("5.1 应正确计算存款利息", async function () {
       this.timeout(10000); // 延长超时时间
 
       const { token, lending, user1 } = await loadFixture(deployFixture);
       const depositAmount = ethers.utils.parseEther("100");
 
+      // 1. 用户批准合约使用其代币
       await token.connect(user1).approve(lending.address, depositAmount);
+      
+      // 2. 用户存款
       await lending.connect(user1).deposit(depositAmount);
 
-      // 时间旅行 - 模拟一年后
-      await time.increase(365 * 24 * 60 * 60);
+      // 3. 获取初始存款信息
+      const initialUserInfo = await lending.users(user1.address);
+      console.log("初始存款:", ethers.utils.formatEther(initialUserInfo.deposited), "ETH");
 
-      // 检查余额应包含利息
+      // 4. 时间旅行 - 模拟一年后 (365天)
+      const oneYearInSeconds = 365 * 24 * 60 * 60;
+      await network.provider.send("evm_increaseTime", [oneYearInSeconds]);
+      await network.provider.send("evm_mine"); // 必须挖一个新块来更新时间戳
+
+      // 5. 关键步骤：执行一个会触发_updateInterest的合约操作
+      // 提取1 wei来触发利息计算
+      await lending.connect(user1).withdraw(1);
+
+      // 6. 检查更新后的余额
       const userInfo = await lending.users(user1.address);
-      const expectedAmount = depositAmount.mul(103).div(100); // 3% 年利息
+      console.log("最终存款:", ethers.utils.formatEther(userInfo.deposited), "ETH");
       
-      // 由于精确计算，允许微小误差
+      // 7. 计算期望值：100 ETH * 3% * 1年 = 103 ETH
+      const expectedInterest = depositAmount.mul(3).mul(oneYearInSeconds).div(365 * 24 * 60 * 60 * 100);
+      const expectedAmount = depositAmount.add(expectedInterest);
+      console.log("期望金额:", ethers.utils.formatEther(expectedAmount), "ETH");
+
+      // 8. 由于Solidity整数除法的特性，可能会有微小的舍入误差
+      // 我们允许1 wei的误差范围
       expect(userInfo.deposited).to.be.closeTo(
         expectedAmount, 
-        expectedAmount.div(100) // 允许1%的误差
+        ethers.utils.parseEther("0.000001") // 0.000001 ETH 的误差范围
       );
     });
-  });
+  }); // 结束第5个测试套件
 
   describe("6. 清算功能测试", function () {
-        xit("6.1 应允许清算抵押不足的仓位", async function () {
-        const { token, lending, user1, liquidator } = await loadFixture(deployFixture);
-        const depositAmount = ethers.utils.parseEther("100");
-        
-        // 存款
-        await token.connect(user1).approve(lending.address, depositAmount.mul(2));
-        await lending.connect(user1).deposit(depositAmount);
-        
-        // 借款达到70% LTV限额（70个代币）
-        const borrowAmount = ethers.utils.parseEther("70");
-        await lending.connect(user1).borrow(borrowAmount);
-        
-        // 模拟抵押品价值下降：通过直接修改用户存款余额
-        // 这里我们创建一个新的用户，直接设置其存款和借款余额
-        const user2Deposit = ethers.utils.parseEther("100");
-        const user2Borrow = ethers.utils.parseEther("80"); // 超过70% LTV
-        
-        // 使用合约的owner权限直接修改用户余额（需要先在合约中添加相应函数）
-        // 或者使用hardhat的网络作弊功能来直接修改状态
-        await network.provider.send("hardhat_setStorageAt", [
-            lending.address,
-            // 这里需要计算用户存储位置，具体取决于合约的存储布局
-            "0x...", // 存储位置
-            "0x..." // 新的存储值
-        ]);
-        
-        // 更简单的方法：部署一个新的恶意合约来帮助测试
-        // 清算者执行清算
-        await expect(lending.connect(liquidator).liquidate(user1.address))
-            .to.emit(lending, "Liquidated");
-        
-        const userInfo = await lending.users(user1.address);
-        expect(userInfo.borrowed).to.equal(0);
-        expect(userInfo.deposited).to.be.lt(depositAmount);
-        });
+    it("6.1 应允许清算抵押不足的仓位", async function () {
+      const { token, lending, user1, liquidator, owner } = await loadFixture(deployFixture);
+      const depositAmount = ethers.utils.parseEther("100");
+
+      
+      // 存款
+      await token.connect(user1).approve(lending.address, depositAmount.mul(2));
+      await lending.connect(user1).deposit(depositAmount);
+      
+      // 借款达到70% LTV限额（70个代币）
+      const borrowAmount = ethers.utils.parseEther("70");
+      await lending.connect(user1).borrow(borrowAmount);
+    
+      // 使用测试函数直接设置用户为抵押不足状态
+      const undercollateralizedBorrow = depositAmount.mul(80).div(100);
+      await lending.testSetUndercollateralized(user1.address, undercollateralizedBorrow);
+
+      // 确保合约有足够的代币余额来执行清算
+      // 计算需要的抵押品金额：债务的110%
+      const collateral = undercollateralizedBorrow.mul(110).div(100);
+
+      // 检查合约余额，如果不足则从所有者转账
+      const contractBalance = await token.balanceOf(lending.address);
+      if (contractBalance.lt(collateral)) {
+        const needed = collateral.sub(contractBalance);
+        await token.connect(owner).transfer(lending.address, needed);
+      }
+    
+      // 验证用户现在抵押不足
+      const userInfo = await lending.users(user1.address);
+      const maxBorrow = userInfo.deposited.mul(70).div(100);
+      expect(userInfo.borrowed.gt(maxBorrow)).to.be.true;
+
+      // 清算者执行清算
+      await expect(lending.connect(liquidator).liquidate(user1.address))
+       .to.emit(lending, "Liquidated");
+      const updatedUserInfo = await lending.users(user1.address);
+      expect(updatedUserInfo.borrowed).to.equal(0);
+      expect(updatedUserInfo.deposited).to.be.lt(depositAmount);
+    });
 
     it("6.2 抵押充足的仓位不应被清算", async function () {
       const { token, lending, user1, liquidator } = await loadFixture(deployFixture);
@@ -291,4 +315,4 @@ describe("DeFiLending Protocol - 完整测试套件", function () {
       expect(userInfo.deposited).to.equal(smallAmount);
     });
   });
-});
+}); // 结束最外层的describe

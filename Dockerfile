@@ -14,17 +14,23 @@ COPY package*.json ./
 RUN npm install -g truffle ganache
 
 # 安装项目依赖（使用经过验证的稳定版本）
-RUN npm install --save-dev \
-    hardhat@2.19.0 \
-    ethers@5.8.0 \
-    @nomiclabs/hardhat-waffle@2.0.6 \
-    @nomiclabs/hardhat-ethers@2.2.3 \
-    ethereum-waffle@3.4.4 \
-    chai@4.3.10
+ RUN npm install --save-dev \
+     hardhat@2.19.0 \
+     ethers@5.8.0 \
+     @nomiclabs/hardhat-waffle@2.0.6 \
+     @nomiclabs/hardhat-ethers@2.2.3 \
+     ethereum-waffle@3.4.4 \
+     chai@4.3.10
 
+# 先用这个试试，上面的先注释
+#COPY package*.json ./
+#RUN npm install
 
-# 安装OpenZeppelin合约（关键修复）
-RUN npm install @openzeppelin/contracts
+# 安装gas reporter
+RUN npm install --save-dev hardhat-gas-reporter
+
+# 安装OpenZeppelin合约（关键修复）  npm忽略peer dependencies的冲突，继续安装
+RUN npm install @openzeppelin/contracts --legacy-peer-deps
 
 
 # 创建Python虚拟环境并安装Slither

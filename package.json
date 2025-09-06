@@ -43,7 +43,7 @@
     "@nomicfoundation/hardhat-ignition": "^0.15.13",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.14",
     "@nomicfoundation/hardhat-network-helpers": "^1.1.0",
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@nomicfoundation/hardhat-verify": "^2.1.1",
     "@nomicfoundation/ignition-core": "^0.15.13",
     "@nomiclabs/hardhat-ethers": "2.2.3",
@@ -59,7 +59,6 @@
     "hardhat": "^2.19.0",
     "hardhat-gas-reporter": "^2.3.0",
     "solidity-coverage": "0.8.16",
-    "truffle": "^5.11.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }

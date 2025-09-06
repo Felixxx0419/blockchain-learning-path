@@ -123,24 +123,34 @@ contract DeFiLending is ReentrancyGuard, Ownable {
     
     function _updateInterest(address userAddress) internal {
         UserInfo storage user = users[userAddress];
+        
+        // 如果是新用户，初始化后直接返回，不计息
         if (user.lastUpdated == 0) {
             user.lastUpdated = block.timestamp;
             return;
         }
         
+        // 计算经过的时间（秒）
         uint256 timePassed = block.timestamp - user.lastUpdated;
+        
+        // 只有在有时间流逝且有存款时才计算利息
         if (timePassed > 0 && user.deposited > 0) {
-            // 使用更高精度的计算方式
-            uint256 annualInterest = (user.deposited * DEPOSIT_RATE) / 100;
-            uint256 interest = (annualInterest * timePassed) / 365 days;
+            // 使用「先乘后除」原则避免精度损失，一次性完成所有计算
+            // 公式: 利息 = (存款金额 × 年利率 × 经过时间) / (365天 × 100)
+            // 假设 DEPOSIT_RATE 是整数百分比（如5表示5%）
+            uint256 interest = (user.deposited * DEPOSIT_RATE * timePassed) / (365 days * 100);
             
-            user.deposited += interest;
-            totalDeposits += interest;
-            
-            // 触发调试事件
-            emit InterestCalculated(userAddress, user.deposited, timePassed, interest);
+            // 确保有实际利息产生（避免微小数量的舍入误差）
+            if (interest > 0) {
+                user.deposited += interest;
+                totalDeposits += interest;
+                
+                // 触发调试事件
+                emit InterestCalculated(userAddress, user.deposited, timePassed, interest);
+            }
         }
         
+        // 更新最后更新时间戳
         user.lastUpdated = block.timestamp;
     }
     
@@ -164,5 +174,28 @@ contract DeFiLending is ReentrancyGuard, Ownable {
         uint256 protocolBalance = token.balanceOf(address(this)) - totalDeposits;
         require(amount <= protocolBalance, "Insufficient protocol fees");
         require(token.transfer(owner(), amount), "Transfer failed");
+    }
+    
+    // 仅限于测试环境使用的函数，用于模拟抵押不足状态
+    function testSetUndercollateralized(address userAddress, uint256 borrowedAmount) external {
+    // 这是一个测试专用函数，在实际部署时应移除或限制访问
+        UserInfo storage user = users[userAddress];
+    
+    // 保存旧的借款金额
+        uint256 oldBorrowed = user.borrowed;
+    
+    // 更新用户借款金额
+        user.borrowed = borrowedAmount;
+    
+    // 确保借款金额超过抵押品的70%，触发清算条件
+        require(borrowedAmount > (user.deposited * 70) / 100, "Not undercollateralized");
+    
+    // 安全地更新总借款额：先减去旧的，再加上新的
+    // 使用 unchecked 块来避免溢出检查（因为我们知道这是安全的）
+        unchecked {
+        totalBorrows = totalBorrows - oldBorrowed + borrowedAmount;
+        }
+
+        _updateUtilizationRate();
     }
 }
